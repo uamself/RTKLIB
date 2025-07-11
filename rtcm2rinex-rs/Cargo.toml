@@ -1,0 +1,52 @@
+[package]
+name = "rtcm2rinex"
+version = "0.1.0"
+edition = "2021"
+description = "RTCM to RINEX conversion library based on RTKLIB"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/rtcm2rinex-rs"
+keywords = ["gnss", "rtcm", "rinex", "gps", "conversion"]
+categories = ["science", "parser-implementations"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# 数据处理相关
+byteorder = "1.4"           # 二进制数据处理
+bitvec = "1.0"              # 位操作
+chrono = "0.4"              # 时间处理
+thiserror = "1.0"           # 错误处理
+
+# FFI相关
+libc = "0.2"                # C语言接口
+static_assertions = "1.1"   # 静态断言
+
+# 文件I/O相关
+memmap2 = "0.5"             # 内存映射文件
+itertools = "0.10"          # 迭代器工具
+
+# 命令行工具相关
+clap = { version = "3.2", features = ["derive"], optional = true }
+
+[dev-dependencies]
+criterion = "0.3"           # 性能基准测试
+tempfile = "3.3"            # 临时文件处理（用于测试）
+float-cmp = "0.9"           # 浮点数比较（用于测试）
+
+[features]
+default = ["cli"]
+cli = ["clap"]              # 命令行工具功能
+
+[lib]
+name = "rtcm2rinex"
+crate-type = ["rlib", "cdylib"]  # 生成Rust库和C动态库
+
+[[bin]]
+name = "rtcm2rinex"
+path = "src/bin/rtcm2rinex.rs"
+required-features = ["cli"]
+
+[[bench]]
+name = "rtcm_decode"
+harness = false
