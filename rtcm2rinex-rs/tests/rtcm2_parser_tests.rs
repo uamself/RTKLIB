@@ -1,6 +1,6 @@
 //! Test cases for RTCM2 parser and RTCM to RINEX conversion
 
-use rtcm2rinex::{init_rtcm, RtcmContext, RtcmMessageType, ConversionOptions};
+use rtcm2rinex::{init_rtcm, ConversionOptions};
 use std::fs;
 use std::io::{self, Read};
 
