@@ -261,6 +261,34 @@ pub enum Rtcm3MessageType {
         /// 天线序列号 (如果有)
         serial_number: Option<String>,
     },
+    /// 文本消息 (1029)
+    TextMessage {
+        /// 参考站 ID
+        station_id: u16,
+        /// 修改时间 (UTC)
+        modified_julian_day: u16,
+        /// UTC 秒
+        seconds_of_day: u32,
+        /// 消息数
+        n_chars: u8,
+        /// 文本内容
+        message: String,
+    },
+    /// 接收机和天线描述 (1033)
+    ReceiverAntennaDescription {
+        /// 参考站 ID
+        station_id: u16,
+        /// 天线描述符
+        antenna_descriptor: String,
+        /// 天线序列号
+        antenna_serial: String,
+        /// 接收机类型描述符
+        receiver_type: String,
+        /// 接收机固件版本
+        firmware_version: String,
+        /// 接收机序列号
+        receiver_serial: String,
+    },
     /// 原始消息内容
     Raw {
         /// 消息类型
@@ -444,28 +472,30 @@ impl Rtcm3Parser {
     
     /// 解析完整的消息
     fn parse_message(&mut self) -> Result<Rtcm3MessageType> {
+        // 获取消息类型，参考 RTKLIB 的 decode_rtcm3 函数
         self.current_type = (((self.buffer[3] as u16) << 4) | ((self.buffer[4] as u16) >> 4)) & 0xFFF;
+        
+        // 根据消息类型分发
         match self.current_type {
             // MSM类型分发到msm.rs
             1074..=1077 | 1084..=1087 | 1094..=1097 | 1124..=1127 => {
                 msm::parse_msm(&self.buffer[3..self.buffer.len()-3], self.current_type)
                     .map_err(|e| Rtcm3Error::ParseError(format!("MSM解析错误: {e}")))
             },
-            // 1005/1006/1007/1008/1019/1020等非MSM类型
+            // 1005/1006/1007/1008/1019/1020/1029/1033等非MSM类型
             1005 => self.parse_type1005(),
             1006 => self.parse_type1006(),
             1007 => self.parse_type1007(),
             1008 => self.parse_type1008(),
             1019 => self.parse_type1019(),
             1020 => self.parse_type1020(),
+            1029 => self.parse_type1029(),
+            1033 => self.parse_type1033(),
             // 其它类型可继续补充
-            _ => {
-                let payload = self.buffer[3..self.buffer.len()-3].to_vec();
-                Ok(Rtcm3MessageType::Raw {
-                    msg_type: self.current_type,
-                    payload,
-                })
-            }
+            _ => Ok(Rtcm3MessageType::Raw {
+                msg_type: self.current_type,
+                payload: self.buffer.clone(),
+            }),
         }
     }
     
@@ -835,6 +865,103 @@ impl Rtcm3Parser {
             tk,
             week,
             tod,
+        })
+    }
+
+    /// 解析文本消息 (MT1029)
+    fn parse_type1029(&self) -> Result<Rtcm3MessageType> {
+        // 创建位读取器，从消息头之后开始读取
+        let mut bit_reader = BitReader::new(&self.buffer[3..]);
+        
+        // 跳过消息类型 (12位)
+        bit_reader.skip_bits(12)?;
+        
+        // 读取参考站 ID (12位)
+        let station_id = bit_reader.read_bits(12)? as u16;
+        
+        // 读取修改后的儒略日 (16位)
+        let modified_julian_day = bit_reader.read_bits(16)? as u16;
+        
+        // 读取一天中的秒数 (17位)
+        let seconds_of_day = bit_reader.read_bits(17)? as u32;
+        
+        // 读取字符数 (7位)
+        let n_chars = bit_reader.read_bits(7)? as u8;
+        
+        // 读取文本内容
+        let mut message = String::with_capacity(n_chars as usize);
+        for _ in 0..n_chars {
+            let char_code = bit_reader.read_bits(8)? as u8;
+            message.push(char_code as char);
+        }
+        
+        Ok(Rtcm3MessageType::TextMessage {
+            station_id,
+            modified_julian_day,
+            seconds_of_day,
+            n_chars,
+            message,
+        })
+    }
+
+    /// 解析接收机和天线描述消息 (MT1033)
+    fn parse_type1033(&self) -> Result<Rtcm3MessageType> {
+        // 创建位读取器
+        let mut bit_reader = BitReader::new(&self.buffer[3..]);
+        
+        // 跳过消息类型 (12位)
+        bit_reader.skip_bits(12)?;
+        
+        // 读取参考站 ID (12位)
+        let station_id = bit_reader.read_bits(12)? as u16;
+        
+        // 读取天线描述符 (8位字符数 + 8位每个字符)
+        let ant_desc_len = bit_reader.read_bits(8)? as usize;
+        let mut antenna_descriptor = String::with_capacity(ant_desc_len);
+        for _ in 0..ant_desc_len {
+            let char_code = bit_reader.read_bits(8)? as u8;
+            antenna_descriptor.push(char_code as char);
+        }
+        
+        // 读取天线序列号
+        let ant_serial_len = bit_reader.read_bits(8)? as usize;
+        let mut antenna_serial = String::with_capacity(ant_serial_len);
+        for _ in 0..ant_serial_len {
+            let char_code = bit_reader.read_bits(8)? as u8;
+            antenna_serial.push(char_code as char);
+        }
+        
+        // 读取接收机类型
+        let rec_type_len = bit_reader.read_bits(8)? as usize;
+        let mut receiver_type = String::with_capacity(rec_type_len);
+        for _ in 0..rec_type_len {
+            let char_code = bit_reader.read_bits(8)? as u8;
+            receiver_type.push(char_code as char);
+        }
+        
+        // 读取固件版本
+        let firmware_len = bit_reader.read_bits(8)? as usize;
+        let mut firmware_version = String::with_capacity(firmware_len);
+        for _ in 0..firmware_len {
+            let char_code = bit_reader.read_bits(8)? as u8;
+            firmware_version.push(char_code as char);
+        }
+        
+        // 读取接收机序列号
+        let rec_serial_len = bit_reader.read_bits(8)? as usize;
+        let mut receiver_serial = String::with_capacity(rec_serial_len);
+        for _ in 0..rec_serial_len {
+            let char_code = bit_reader.read_bits(8)? as u8;
+            receiver_serial.push(char_code as char);
+        }
+        
+        Ok(Rtcm3MessageType::ReceiverAntennaDescription {
+            station_id,
+            antenna_descriptor,
+            antenna_serial,
+            receiver_type,
+            firmware_version,
+            receiver_serial,
         })
     }
 }
