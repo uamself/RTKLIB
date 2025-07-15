@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 use std::io::{self, Write};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, Datelike, Timelike};
 
 use super::RinexError;
 use crate::gnss::time::GnssTime;
@@ -59,7 +59,7 @@ impl Default for RinexObsStatus {
     }
 }
 
-/// 周跳变标记
+/// 周跳变变标记
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CycleSlip {
     /// 是否检测到周跳变
@@ -164,10 +164,11 @@ impl RinexObservation {
     /// 格式化为RINEX 2.x格式的观测值字符串
     pub fn format_v2(&self) -> String {
         if self.is_valid() {
-            format!("{:14.3f}{:1}{:1}", 
-                  self.value,
-                  self.get_lli(),
-                  self.signal_strength)
+            format!("{:14.3}{:1}{:1}", 
+                self.value, 
+                if self.cycle_slip.detected { "1" } else { " " }, 
+                if self.signal_strength < 1 { " " } else if self.signal_strength < 5 { "1" } else { "5" }
+            )
         } else {
             "                ".to_string()
         }
@@ -176,10 +177,11 @@ impl RinexObservation {
     /// 格式化为RINEX 3.x格式的观测值字符串
     pub fn format_v3(&self) -> String {
         if self.is_valid() {
-            format!("{:14.3f}{:1}{:1}", 
-                  self.value,
-                  self.get_lli(),
-                  self.signal_strength)
+            format!("{:14.3}{:1}{:1}", 
+                self.value, 
+                if self.cycle_slip.detected { "1" } else { " " }, 
+                if self.signal_strength < 1 { " " } else if self.signal_strength < 5 { "1" } else { "5" }
+            )
         } else {
             "                ".to_string()
         }

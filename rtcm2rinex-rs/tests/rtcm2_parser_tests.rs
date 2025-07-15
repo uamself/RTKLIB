@@ -1,6 +1,6 @@
 //! Test cases for RTCM2 parser and RTCM to RINEX conversion
 
-use rtcm2rinex_rs::{init_rtcm, RtcmContext, RtcmMessageType, RinexOptions};
+use rtcm2rinex::{init_rtcm, RtcmContext, RtcmMessageType, ConversionOptions};
 use std::fs;
 use std::io::{self, Read};
 
@@ -57,17 +57,16 @@ fn test_rtcm2_to_rinex() -> io::Result<()> {
                     // 创建临时输出文件路径
                     let output_path = format!("/tmp/test_output_{}.rnx", file_path.replace('/', "_"));
                     
-                    // 创建RINEX选项
-                    let mut options = RinexOptions::new(3.04);
-                    
-                    // 添加观测数据类型
+                    // 创建转换选项
                     let obs_types = ctx.get_observation_types();
-                    for (sys, _) in &obs_types {
-                        options.add_nav_system(*sys);
-                    }
+                    let options = ConversionOptions {
+                        rinex_version: 3.04,
+                        systems: obs_types.keys().cloned().collect(),
+                        ..Default::default()
+                    };
                     
                     // 转换为RINEX
-                    match rtcm2rinex_rs::convert_to_rinex(&ctx, &options, &output_path) {
+                    match rtcm2rinex::convert_to_rinex(&ctx, &options, &output_path) {
                         Ok(_) => println!("Successfully converted to RINEX: {}", output_path),
                         Err(e) => println!("Failed to convert to RINEX: {}", e),
                     }

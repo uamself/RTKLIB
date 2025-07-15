@@ -5,12 +5,13 @@
  * MSM 消息用于传输各种卫星系统的观测数据，包括伪距、相位、多普勒和信号强度。
  */
 
+use std::io;
+use thiserror::Error;
+
 use crate::gnss::time::GnssTime;
 use crate::util::bits::BitReader;
 use crate::rtcm::Rtcm3MessageType;
 use crate::rtcm::Rtcm3Error;
-use thiserror::Error;
-use std::io;
 
 /// MSM 解析错误
 #[derive(Debug, Error)]
@@ -510,7 +511,7 @@ fn parse_satellite_data(bit_reader: &mut BitReader, header: &MsmHeader, satellit
     }
     
     // 相位范围率（对于MSM2、MSM5、MSM7）
-    let mut phase_range_rates = if matches!(header.msm_type, MsmType::CompactPhaseRangeRate | MsmType::FullPseudorangesRates | MsmType::FullPhaserangesPseudorangesRates) {
+    let phase_range_rates = if matches!(header.msm_type, MsmType::CompactPhaseRangeRate | MsmType::FullPseudorangesRates | MsmType::FullPhaserangesPseudorangesRates) {
         let mut rates = vec![None; satellite_count];
         for i in 0..satellite_count {
             let rate = bit_reader.read_bits_signed(14)? as i16;
@@ -542,7 +543,7 @@ fn parse_signal_data(bit_reader: &mut BitReader, header: &MsmHeader, satellite_c
     let mut signals = Vec::with_capacity(cell_count);
     
     // 为每个信号提取ID
-    let signal_ids = extract_signal_ids(header.signal_mask);
+    let _signal_ids = extract_signal_ids(header.signal_mask);
     
     // 根据MSM类型确定各字段的位宽
     let (pseudorange_bits, pseudorange_resolution) = match header.msm_type {

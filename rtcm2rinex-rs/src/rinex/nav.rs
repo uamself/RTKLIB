@@ -5,7 +5,7 @@
  */
 
 use std::io::{self, Write};
-use chrono::{DateTime, Utc, NaiveDateTime};
+use chrono::{DateTime, Utc, NaiveDateTime, Datelike, Timelike};
 
 use super::RinexError;
 

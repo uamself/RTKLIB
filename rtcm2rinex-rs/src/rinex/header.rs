@@ -6,7 +6,7 @@
 
 use std::fmt::{self, Display, Formatter};
 use std::io::{self, Write};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, Datelike, Timelike};
 use std::collections::HashMap;
 
 use super::RinexError;
@@ -312,12 +312,12 @@ impl RinexHeader {
                 &self.antenna_number, &self.antenna_type)?;
 
         // 近似位置
-        writeln!(writer, "{:14.4f}{:14.4f}{:14.4f}{:18}APPROX POSITION XYZ", 
+        writeln!(writer, "{:14.4}{:14.4}{:14.4}{}APPROX POSITION XYZ", 
                 self.approx_position_x, self.approx_position_y, self.approx_position_z, "")?;
 
         // 天线高度
-        writeln!(writer, "{:14.4f}{:14.4f}{:14.4f}{:18}ANTENNA: DELTA H/E/N", 
-                self.antenna_height, self.antenna_e, self.antenna_n)?;
+        writeln!(writer, "{:14.4}{:14.4}{:14.4}{}ANTENNA: DELTA H/E/N", 
+                self.antenna_height, self.antenna_e, self.antenna_n, "")?;
 
         // 观测类型 - 根据RINEX版本使用不同格式
         if self.version >= 3.0 {

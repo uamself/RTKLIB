@@ -36,12 +36,10 @@ impl GnssTime {
     /// 从年、月、日、时、分、秒创建GNSS时间
     pub fn from_ymd_hms(year: i32, month: u32, day: u32, hour: u32, min: u32, sec: f64) -> Option<Self> {
         let date = NaiveDate::from_ymd_opt(year, month, day)?;
-        let hour_i = hour as i64;
-        let min_i = min as i64;
         let sec_i = sec as i64;
         
         let time_since_epoch = date.and_hms_opt(hour, min, 0)?
-            .timestamp() - GPS_EPOCH + sec_i;
+            .and_utc().timestamp() - GPS_EPOCH + sec_i;
         
         let seconds = time_since_epoch as f64 + (sec - sec_i as f64);
         

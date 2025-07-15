@@ -22,12 +22,11 @@ pub use crate::rtcm::{RtcmContext, RtcmError, RtcmMessageType};
 pub use crate::rinex::{RinexOptions, RinexError};
 pub use crate::gnss::time::GnssTime;
 
-use chrono::{Datelike, Timelike, Utc};
+use chrono::Utc;
 use std::collections::HashMap;
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 use std::path::Path;
 use crate::rinex::header::{RinexHeader, RinexSystem, RinexFileType};
-use crate::rinex::obs::RinexEpochData;
 use crate::rinex::nav::NavData;
 
 /// 错误类型
@@ -407,8 +406,8 @@ fn generate_observation_file(ctx: &RtcmContext, options: &ConversionOptions, out
                 // RINEX 2.x格式
                 // 获取所有观测类型的平铺列表
                 let mut all_types = Vec::new();
-                for (sys, types) in &obs_types {
-                    if options.systems.contains(sys) {
+                for (_sys, types) in &obs_types {
+                    if options.systems.contains(_sys) {
                         for obs_type in types {
                             // 移除系统前缀
                             let type_without_sys = obs_type.chars().skip(1).collect::<String>();
