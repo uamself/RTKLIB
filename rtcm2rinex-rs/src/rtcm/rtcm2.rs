@@ -9,7 +9,6 @@
  */
 
 use crate::util::bits::BitReader;
-use crate::gnss::time::GnssTime;
 use thiserror::Error;
 use std::io;
 

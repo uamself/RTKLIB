@@ -35,7 +35,64 @@ impl<'a> BitReader<'a> {
         self.byte_pos < self.data.len()
     }
     
+    /// 读取单个位
+    pub fn read_bit(&mut self) -> Result<bool, io::Error> {
+        if self.byte_pos >= self.data.len() {
+            return Err(Error::new(ErrorKind::UnexpectedEof, "End of data"));
+        }
+        
+        let bit = (self.data[self.byte_pos] >> (7 - self.bit_pos)) & 0x01;
+        
+        // 更新位置
+        self.bit_pos += 1;
+        if self.bit_pos >= 8 {
+            self.bit_pos = 0;
+            self.byte_pos += 1;
+        }
+        
+        Ok(bit != 0)
+    }
+    
     /// 读取指定位数的无符号整数
+    pub fn read_bits(&mut self, bit_count: usize) -> Result<u32, io::Error> {
+        if bit_count > 32 {
+            return Err(Error::new(ErrorKind::InvalidInput, "Cannot read more than 32 bits into u32"));
+        }
+        
+        let mut result = 0u32;
+        
+        for _ in 0..bit_count {
+            result = (result << 1) | (if self.read_bit()? { 1 } else { 0 });
+        }
+        
+        Ok(result)
+    }
+    
+    /// 读取指定位数的有符号整数
+    pub fn read_bits_signed(&mut self, bit_count: usize) -> Result<i32, io::Error> {
+        if bit_count > 32 {
+            return Err(Error::new(ErrorKind::InvalidInput, "Cannot read more than 32 bits into i32"));
+        }
+        
+        if bit_count == 0 {
+            return Ok(0);
+        }
+        
+        let unsigned = self.read_bits(bit_count)?;
+        
+        // 检查符号位
+        let sign_bit = 1u32 << (bit_count - 1);
+        if (unsigned & sign_bit) != 0 {
+            // 负数，扩展符号位
+            let mask = !((1u32 << bit_count) - 1);
+            Ok((unsigned | mask) as i32)
+        } else {
+            // 正数
+            Ok(unsigned as i32)
+        }
+    }
+    
+    /// 读取指定位数的无符号整数 (RTKLIB 风格的 getbitu 实现)
     pub fn read_bits_u32(&mut self, bit_count: usize) -> Result<u32, io::Error> {
         if bit_count > 32 {
             return Err(Error::new(ErrorKind::InvalidInput, "Cannot read more than 32 bits into u32"));
@@ -72,7 +129,7 @@ impl<'a> BitReader<'a> {
         }
     }
     
-    /// 读取指定位数的有符号整数
+    /// 读取指定位数的有符号整数 (RTKLIB 风格的 getbits 实现)
     pub fn read_bits_i32(&mut self, bit_count: usize) -> Result<i32, io::Error> {
         if bit_count > 32 {
             return Err(Error::new(ErrorKind::InvalidInput, "Cannot read more than 32 bits into i32"));

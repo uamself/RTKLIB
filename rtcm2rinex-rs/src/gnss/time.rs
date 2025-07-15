@@ -11,6 +11,9 @@ use chrono::{DateTime, Utc, TimeZone, Datelike, Timelike, NaiveDate, NaiveDateTi
 /// GPS时间开始的历元（1980-01-06 00:00:00 UTC）
 const GPS_EPOCH: i64 = 315964800; // 1980-01-06 00:00:00 UTC
 
+/// GLONASS时间和GPS时间的偏移 (3小时，GLONASS是UTC+3)
+const GLONASS_GPS_DIFF: f64 = 10800.0; // 3小时 = 10800秒
+
 /// GNSS时间表示
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct GnssTime {
@@ -67,6 +70,31 @@ impl GnssTime {
     /// 获取秒数
     pub fn seconds(&self) -> f64 {
         self.seconds
+    }
+
+    /// 从GPS周和周内秒创建GNSS时间
+    pub fn new_gps(week: i32, tow: f64) -> Self {
+        let seconds = week as f64 * 7.0 * 86400.0 + tow;
+        Self { seconds }
+    }
+    
+    /// 从GLONASS日期创建GNSS时间
+    /// day: 周内天 (1-7，1=星期一)
+    /// tod: 天内秒
+    pub fn new_glonass(day: i32, tod: f64) -> Self {
+        // GLONASS时间是UTC+3，需要转换为GPS时间
+        // 目前简化处理，忽略闰秒等复杂问题
+        let gps_seconds = (day - 1) as f64 * 86400.0 + tod - GLONASS_GPS_DIFF;
+        Self { seconds: gps_seconds }
+    }
+    
+    /// 调整GPS周 (处理周跨越)
+    pub fn adjust_week(&mut self, reference_time: &Self) {
+        let week_diff = (reference_time.seconds - self.seconds).abs() / (7.0 * 86400.0);
+        if week_diff > 1000.0 {  // 如果差距太大，可能是周跨越
+            let week_adj = ((reference_time.seconds - self.seconds) / (7.0 * 86400.0)).round() as i32;
+            self.seconds += week_adj as f64 * 7.0 * 86400.0;
+        }
     }
 }
 
