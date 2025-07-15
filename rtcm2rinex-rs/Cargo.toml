@@ -36,6 +36,7 @@ float-cmp = "0.9"           # 浮点数比较（用于测试）
 
 [features]
 default = ["cli"]
+ffi = []                    # FFI功能
 cli = ["clap"]              # 命令行工具功能
 
 [lib]
@@ -46,7 +47,3 @@ crate-type = ["rlib", "cdylib"]  # 生成Rust库和C动态库
 name = "rtcm2rinex"
 path = "src/bin/rtcm2rinex.rs"
 required-features = ["cli"]
-
-[[bench]]
-name = "rtcm_decode"
-harness = false
