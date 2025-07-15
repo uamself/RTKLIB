@@ -6,7 +6,7 @@
 
 use std::fmt;
 use std::ops::{Add, Sub};
-use chrono::{DateTime, Utc, TimeZone, Datelike, Timelike, NaiveDate, NaiveDateTime};
+use chrono::{DateTime, Utc, TimeZone, Datelike, Timelike, NaiveDate};
 
 /// GPS时间开始的历元（1980-01-06 00:00:00 UTC）
 const GPS_EPOCH: i64 = 315964800; // 1980-01-06 00:00:00 UTC
@@ -19,6 +19,12 @@ const GLONASS_GPS_DIFF: f64 = 10800.0; // 3小时 = 10800秒
 pub struct GnssTime {
     /// 秒数（自GPS起始时间）
     seconds: f64,
+}
+
+impl Default for GnssTime {
+    fn default() -> Self {
+        Self { seconds: 0.0 }
+    }
 }
 
 impl GnssTime {
@@ -95,6 +101,11 @@ impl GnssTime {
             let week_adj = ((reference_time.seconds - self.seconds) / (7.0 * 86400.0)).round() as i32;
             self.seconds += week_adj as f64 * 7.0 * 86400.0;
         }
+    }
+
+    /// 转换为DateTime<Utc>，与to_utc_datetime相同，保持API一致性
+    pub fn to_datetime(&self) -> DateTime<Utc> {
+        self.to_utc_datetime()
     }
 }
 

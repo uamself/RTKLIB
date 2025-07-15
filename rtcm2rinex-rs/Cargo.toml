@@ -27,7 +27,7 @@ memmap2 = "0.5"             # 内存映射文件
 itertools = "0.10"          # 迭代器工具
 
 # 命令行工具相关
-clap = { version = "3.2", features = ["derive"], optional = true }
+clap = "3.2"
 
 [dev-dependencies]
 criterion = "0.3"           # 性能基准测试

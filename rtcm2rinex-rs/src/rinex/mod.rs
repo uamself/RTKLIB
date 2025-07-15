@@ -58,9 +58,24 @@ impl RinexOptions {
             self.nav_systems.push(system);
         }
     }
+    
+    /// 获取RINEX版本
+    pub fn get_version(&self) -> f64 {
+        self.version
+    }
+    
+    /// 获取导航系统列表
+    pub fn get_nav_systems(&self) -> &[char] {
+        &self.nav_systems
+    }
+    
+    /// 获取观测数据类型列表
+    pub fn get_obs_types(&self) -> &[String] {
+        &self.obs_types
+    }
 }
 
-// 导出子模块（暂不实现）
-// pub mod header;
-// pub mod obs;
-// pub mod nav; 
+// 导出子模块
+pub mod header;
+pub mod obs;
+pub mod nav; 
