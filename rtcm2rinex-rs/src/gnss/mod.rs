@@ -8,6 +8,8 @@
 pub mod time;
 pub mod coord;
 pub mod orbit;
+pub mod tide;
+pub mod atmos;
 
 // 重新导出常用类型
 pub use self::time::GnssTime;

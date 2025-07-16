@@ -2,6 +2,23 @@
 
 RTCM到RINEX格式转换工具的Rust实现。
 
+## 项目进展
+
+**当前状态**: GNSS基础模块框架已完成，包括坐标转换、轨道计算、大气模型和潮汐模型的基础接口。
+
+- ✅ 基本项目结构设计
+- ✅ RTCM解析核心功能
+- ✅ RINEX生成核心功能
+- ✅ GNSS基础模块框架
+  - ✅ 坐标系转换模块 (coord.rs)
+  - ✅ 轨道计算基础接口 (orbit.rs)
+  - ✅ 大气模型基础实现 (atmos.rs)
+  - ✅ 潮汐模型框架 (tide.rs)
+- 🔄 GNSS基础模块具体算法实现（进行中）
+- ⬜ 完整卫星系统支持
+- ⬜ 高级功能模块
+- ⬜ 全面测试覆盖
+
 ## 功能
 
 - 支持RTCM2.x和RTCM3.x格式解析
@@ -16,12 +33,12 @@ RTCM到RINEX格式转换工具的Rust实现。
 ### 命令行工具
 
 ```bash
-rtcm2rinex [OPTIONS] <INPUT> <OUTPUT>
+rtcm2rinex [OPTIONS] <INPUT> <o>
 ```
 
 参数:
 - `<INPUT>`: 输入RTCM文件路径
-- `<OUTPUT>`: 输出RINEX文件路径（不含扩展名）
+- `<o>`: 输出RINEX文件路径（不含扩展名）
 
 选项:
 - `-v, --version <VERSION>`: RINEX版本 (默认: 3.04)
@@ -38,13 +55,13 @@ rtcm2rinex [OPTIONS] <INPUT> <OUTPUT>
 
 ```rust
 use rtcm2rinex::{init_rtcm, process_rtcm_file, convert_to_rinex, ConversionOptions};
-
+    
 // 创建RTCM上下文
 let mut ctx = init_rtcm().unwrap();
-
+    
 // 处理RTCM文件
 process_rtcm_file(&mut ctx, "input.rtcm").unwrap();
-
+    
 // 创建转换选项
 let options = ConversionOptions {
     rinex_version: 3.04,
@@ -57,6 +74,31 @@ let options = ConversionOptions {
 // 转换为RINEX
 convert_to_rinex(&ctx, &options, "output").unwrap();
 ```
+
+## GNSS模块实现
+
+当前已实现的GNSS模块包括：
+
+### 坐标转换 (coord.rs)
+- ECEF/LLH/ENU坐标转换
+- 地心地固坐标系转换
+- WGS84椭球参数支持
+
+### 轨道计算 (orbit.rs)
+- 多系统支持架构设计
+- 卫星位置计算基础实现
+- 卫星速度和钟差计算接口
+
+### 大气模型 (atmos.rs)
+- Klobuchar电离层模型
+- Saastamoinen对流层模型
+- 对流层映射函数
+- SBAS/IONEX电离层延迟接口
+
+### 潮汐模型 (tide.rs)
+- 固体地球潮接口
+- 海洋潮汐加载接口
+- 极移潮接口
 
 ## 安装
 
@@ -117,6 +159,13 @@ rtcm2rinex --obs-only input.rtcm output
 # 压缩输出文件
 rtcm2rinex -c input.rtcm output
 ```
+
+## 下一步计划
+
+1. 完善GNSS基础模块算法实现
+2. 扩展对更多卫星系统的支持
+3. 增加高级功能和错误处理
+4. 提高测试覆盖率和性能优化
 
 ## 许可证
 
