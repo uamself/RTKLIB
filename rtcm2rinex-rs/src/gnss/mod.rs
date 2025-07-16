@@ -10,9 +10,11 @@ pub mod coord;
 pub mod orbit;
 pub mod tide;
 pub mod atmos;
+pub mod satsys;
 
 // 重新导出常用类型
 pub use self::time::GnssTime;
+pub use self::satsys::*;
 
 /// GNSS系统类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

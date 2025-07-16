@@ -313,6 +313,63 @@ pub struct QzssNavData {
     pub flag: u8,
 }
 
+/// IRNSS导航数据
+#[derive(Debug, Clone)]
+pub struct IrnssNavData {
+    /// 卫星PRN号
+    pub prn: u8,
+    /// 星历参考时间
+    pub toc: DateTime<Utc>,
+    /// 参考周数
+    pub week: u16,
+    /// 轨道精度
+    pub sva: u8,
+    /// 时钟二阶项
+    pub af2: f64,
+    /// 时钟一阶项
+    pub af1: f64,
+    /// 时钟零阶项
+    pub af0: f64,
+    /// 星历数据块号
+    pub iode: u8,
+    /// 升交点角距修正项
+    pub crs: f64,
+    /// 平均角速度修正项
+    pub delta_n: f64,
+    /// 平近点角
+    pub m0: f64,
+    /// 纬度幅角的余弦调和振幅
+    pub cuc: f64,
+    /// 轨道偏心率
+    pub e: f64,
+    /// 纬度幅角的正弦调和振幅
+    pub cus: f64,
+    /// 轨道长半轴的平方根
+    pub sqrt_a: f64,
+    /// 星历参考时间
+    pub toe: f64,
+    /// 轨道倾角的余弦调和振幅
+    pub cic: f64,
+    /// 升交点赤经
+    pub omega0: f64,
+    /// 轨道倾角的正弦调和振幅
+    pub cis: f64,
+    /// 轨道倾角
+    pub i0: f64,
+    /// 地心距离的余弦调和振幅
+    pub crc: f64,
+    /// 近地点角距
+    pub omega: f64,
+    /// 升交点赤经变化率
+    pub omega_dot: f64,
+    /// 轨道倾角变化率
+    pub idot: f64,
+    /// TGD 
+    pub tgd: f64,
+    /// 卫星健康状态
+    pub svh: u8,
+}
+
 /// 通用导航数据
 #[derive(Debug, Clone)]
 pub enum NavData {
@@ -326,6 +383,8 @@ pub enum NavData {
     BeiDou(BeidouNavData),
     /// QZSS导航数据
     QZSS(QzssNavData),
+    /// IRNSS导航数据
+    IRNSS(IrnssNavData),
 }
 
 impl NavData {
@@ -337,6 +396,7 @@ impl NavData {
             NavData::Galileo(data) => write_galileo_nav(writer, data, version),
             NavData::BeiDou(data) => write_beidou_nav(writer, data, version),
             NavData::QZSS(data) => write_qzss_nav(writer, data, version),
+            NavData::IRNSS(data) => write_irnss_nav(writer, data, version),
         }
     }
     
@@ -348,6 +408,7 @@ impl NavData {
             NavData::Galileo(data) => data.prn,
             NavData::BeiDou(data) => data.prn,
             NavData::QZSS(data) => data.prn,
+            NavData::IRNSS(data) => data.prn,
         }
     }
     
@@ -359,6 +420,7 @@ impl NavData {
             NavData::Galileo(data) => data.toc,
             NavData::BeiDou(data) => data.toc,
             NavData::QZSS(data) => data.toc,
+            NavData::IRNSS(data) => data.toc,
         }
     }
     
@@ -370,6 +432,7 @@ impl NavData {
             NavData::Galileo(_) => NavSystem::Galileo,
             NavData::BeiDou(_) => NavSystem::BeiDou,
             NavData::QZSS(_) => NavSystem::QZSS,
+            NavData::IRNSS(_) => NavSystem::IRNSS,
         }
     }
 }
@@ -638,6 +701,64 @@ fn write_qzss_nav<W: Write>(writer: &mut W, data: &QzssNavData, version: f64) ->
     // 星历行7
     writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
             data.sva as f64, data.svh as f64, data.tgd, data.iodc as f64)?;
+    
+    // 星历行8
+    writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
+            0.0, 0.0, 0.0, 0.0)?;
+    
+    Ok(())
+}
+
+/// 写入IRNSS导航数据
+fn write_irnss_nav<W: Write>(writer: &mut W, data: &IrnssNavData, version: f64) -> Result<(), RinexError> {
+    // 星历行1
+    if version >= 3.0 {
+        write!(writer, "I{:02} {:04} {:02} {:02} {:02} {:02} {:02}",
+               data.prn,
+               data.toc.year(),
+               data.toc.month(),
+               data.toc.day(),
+               data.toc.hour(),
+               data.toc.minute(),
+               data.toc.second())?;
+    } else {
+        // RINEX 2.x不支持IRNSS，但为了兼容性仍然提供
+        write!(writer, "{:2}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}",
+               data.prn,
+               data.toc.year() % 100,
+               data.toc.month(),
+               data.toc.day(),
+               data.toc.hour(),
+               data.toc.minute(),
+               data.toc.second())?;
+    }
+    
+    writeln!(writer, "{:19.12E}{:19.12E}{:19.12E}",
+            data.af0, data.af1, data.af2)?;
+    
+    // 星历行2
+    writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
+            data.iode as f64, data.crs, data.delta_n, data.m0)?;
+    
+    // 星历行3
+    writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
+            data.cuc, data.e, data.cus, data.sqrt_a)?;
+    
+    // 星历行4
+    writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
+            data.toe, data.cic, data.omega0, data.cis)?;
+    
+    // 星历行5
+    writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
+            data.i0, data.crc, data.omega, data.omega_dot)?;
+    
+    // 星历行6
+    writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
+            data.idot, 0.0, data.week as f64, 0.0)?;
+    
+    // 星历行7
+    writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
+            data.sva as f64, data.svh as f64, data.tgd, 0.0)?;
     
     // 星历行8
     writeln!(writer, "    {:19.12E}{:19.12E}{:19.12E}{:19.12E}",
