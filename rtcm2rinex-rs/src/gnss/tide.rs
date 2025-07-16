@@ -158,7 +158,7 @@ fn sun_moon_pos_gmst(time: f64, _erp: Option<&Erp>) -> ([f64; 3], [f64; 3], f64)
 
 /// 计算固体地球潮引起的位移（对齐RTKLIB tides.c 实现）
 fn solid_earth_tide_disp(site_ecef: [f64; 3], sun_moon_pos: [f64; 3], mass_ratio: f64) -> [f64; 3] {
-    use std::f64::consts::PI;
+    
     
     let re = 6378137.0; // WGS84地球半径
     

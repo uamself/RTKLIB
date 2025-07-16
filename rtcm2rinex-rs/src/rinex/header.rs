@@ -5,7 +5,7 @@
  */
 
 use std::fmt::{self, Display, Formatter};
-use std::io::{self, Write};
+use std::io::Write;
 use chrono::{DateTime, Utc, Datelike, Timelike};
 use std::collections::HashMap;
 

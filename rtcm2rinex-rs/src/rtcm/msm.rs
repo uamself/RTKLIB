@@ -11,7 +11,6 @@ use thiserror::Error;
 use crate::gnss::time::GnssTime;
 use crate::util::bits::BitReader;
 use crate::rtcm::Rtcm3MessageType;
-use crate::rtcm::Rtcm3Error;
 
 /// MSM 解析错误
 #[derive(Debug, Error)]

@@ -16,10 +16,9 @@ pub use self::rtcm3::{Rtcm3Parser, Rtcm3MessageType, Rtcm3Error};
 use thiserror::Error;
 use std::io;
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 use crate::gnss::time::GnssTime;
 use crate::rinex::obs::{RinexEpochData, RinexObservation};
-use crate::rinex::nav::{NavData, GpsNavData, GlonassNavData};
+use crate::rinex::nav::{GpsNavData, GlonassNavData};
 
 /// RTCM处理上下文
 #[derive(Debug)]
@@ -136,31 +135,31 @@ impl RtcmContext {
     /// 处理单个字节
     pub fn process_byte(&mut self, byte: u8) -> Result<Option<RtcmMessageType>, RtcmError> {
         // 首先尝试RTCM3解析器
-        match self.rtcm3_parser.process_byte(byte)? {
-            Some(msg) => {
-                let msg_type = RtcmMessageType::Rtcm3(msg.clone());
-                self.last_message_type = Some(msg_type.clone());
-                
-                // 处理接收到的消息并更新内部状态
-                self.process_rtcm3_message(&msg)?;
-                
-                return Ok(Some(msg_type));
-            },
+            match self.rtcm3_parser.process_byte(byte)? {
+                Some(msg) => {
+                    let msg_type = RtcmMessageType::Rtcm3(msg.clone());
+                    self.last_message_type = Some(msg_type.clone());
+                    
+                    // 处理接收到的消息并更新内部状态
+                    self.process_rtcm3_message(&msg)?;
+                    
+                    return Ok(Some(msg_type));
+                },
             None => {
                 // RTCM3解析器没有返回消息，继续尝试RTCM2
             }
         }
         
         // 如果RTCM3没有结果，尝试RTCM2解析器
-        match self.rtcm2_parser.process_byte(byte)? {
-            Some(msg) => {
-                let msg_type = RtcmMessageType::Rtcm2(msg.header.message_type);
-                self.last_message_type = Some(msg_type.clone());
-                
-                // 处理RTCM2消息 (未实现)
-                
-                return Ok(Some(msg_type));
-            },
+            match self.rtcm2_parser.process_byte(byte)? {
+                Some(msg) => {
+                    let msg_type = RtcmMessageType::Rtcm2(msg.header.message_type);
+                    self.last_message_type = Some(msg_type.clone());
+                    
+                    // 处理RTCM2消息 (未实现)
+                    
+                    return Ok(Some(msg_type));
+                },
             None => {
                 // 两个解析器都没有返回消息
             }

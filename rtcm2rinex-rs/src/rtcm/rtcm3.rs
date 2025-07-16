@@ -691,14 +691,14 @@ impl Rtcm3Parser {
                 (val as i32) as f64 * scale
             } else {
                 let sign_bit = 1u32 << (bits - 1);
-                if val & sign_bit != 0 {
+            if val & sign_bit != 0 {
                     // 负数：扩展符号位
                     let mask = (1u32 << bits) - 1;
                     let extended = val | (!mask);
                     (extended as i32) as f64 * scale
-                } else {
+            } else {
                     // 正数
-                    val as f64 * scale
+                val as f64 * scale
                 }
             }
         };
