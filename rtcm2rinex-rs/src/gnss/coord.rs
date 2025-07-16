@@ -100,7 +100,7 @@ pub fn enu_to_llh(enu: [f64; 3], ref_llh: [f64; 3]) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+    use std::f64::consts::PI;
 
     // TODO: 修复ECEF->LLH迭代算法的数值精度问题
     // #[test]
