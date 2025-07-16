@@ -135,68 +135,38 @@ impl RtcmContext {
     
     /// 处理单个字节
     pub fn process_byte(&mut self, byte: u8) -> Result<Option<RtcmMessageType>, RtcmError> {
-        // 检查是否为RTCM3前导码 (0xD3)
-        if byte == 0xD3 && matches!(self.state, RtcmState::WaitingForPreamble) {
-            // 使用RTCM3解析器处理
-            match self.rtcm3_parser.process_byte(byte)? {
-                Some(msg) => {
-                    let msg_type = RtcmMessageType::Rtcm3(msg.clone());
-                    self.last_message_type = Some(msg_type.clone());
-                    
-                    // 处理接收到的消息并更新内部状态
-                    self.process_rtcm3_message(&msg)?;
-                    
-                    return Ok(Some(msg_type));
-                },
-                None => return Ok(None),
-            }
-        }
-        // 检查是否为RTCM2前导码 (0x66)
-        else if byte == 0x66 && matches!(self.state, RtcmState::WaitingForPreamble) {
-            // 使用RTCM2解析器处理
-            match self.rtcm2_parser.process_byte(byte)? {
-                Some(msg) => {
-                    let msg_type = RtcmMessageType::Rtcm2(msg.header.message_type);
-                    self.last_message_type = Some(msg_type.clone());
-                    
-                    // 处理RTCM2消息 (未实现)
-                    
-                    return Ok(Some(msg_type));
-                },
-                None => return Ok(None),
-            }
-        } 
-        
-        // 如果已经在解析过程中
-        if !matches!(self.state, RtcmState::WaitingForPreamble) {
-            // 尝试使用RTCM3解析器
-            if let Some(rtcm3_result) = self.rtcm3_parser.process_byte(byte).ok() {
-                if let Some(msg) = rtcm3_result {
-                    let msg_type = RtcmMessageType::Rtcm3(msg.clone());
-                    self.last_message_type = Some(msg_type.clone());
-                    
-                    // 处理接收到的消息并更新内部状态
-                    self.process_rtcm3_message(&msg)?;
-                    
-                    self.state = RtcmState::WaitingForPreamble;
-                    return Ok(Some(msg_type));
-                }
-            }
-            
-            // 尝试使用RTCM2解析器
-            match self.rtcm2_parser.process_byte(byte)? {
-                Some(msg) => {
-                    let msg_type = RtcmMessageType::Rtcm2(msg.header.message_type);
-                    self.last_message_type = Some(msg_type.clone());
-                    self.state = RtcmState::WaitingForPreamble;
-                    return Ok(Some(msg_type));
-                },
-                None => return Ok(None),
+        // 首先尝试RTCM3解析器
+        match self.rtcm3_parser.process_byte(byte)? {
+            Some(msg) => {
+                let msg_type = RtcmMessageType::Rtcm3(msg.clone());
+                self.last_message_type = Some(msg_type.clone());
+                
+                // 处理接收到的消息并更新内部状态
+                self.process_rtcm3_message(&msg)?;
+                
+                return Ok(Some(msg_type));
+            },
+            None => {
+                // RTCM3解析器没有返回消息，继续尝试RTCM2
             }
         }
         
-        // 如果都不匹配，保存字节并返回无消息
-        self.buffer.push(byte);
+        // 如果RTCM3没有结果，尝试RTCM2解析器
+        match self.rtcm2_parser.process_byte(byte)? {
+            Some(msg) => {
+                let msg_type = RtcmMessageType::Rtcm2(msg.header.message_type);
+                self.last_message_type = Some(msg_type.clone());
+                
+                // 处理RTCM2消息 (未实现)
+                
+                return Ok(Some(msg_type));
+            },
+            None => {
+                // 两个解析器都没有返回消息
+            }
+        }
+        
+        // 如果都没有返回消息，说明还在解析过程中
         Ok(None)
     }
     

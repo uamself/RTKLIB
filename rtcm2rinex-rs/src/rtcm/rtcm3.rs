@@ -681,12 +681,25 @@ impl Rtcm3Parser {
         let prn = bit_reader.read_bits(6)? as u8;
         
         // 参数计算函数
-        let get_signed = |val: u32, scale: f64| -> f64 {
-            let sign_bit = 1u32 << (val.leading_zeros() - 1);
-            if val & sign_bit != 0 {
-                ((val & (sign_bit - 1)) as i32 - (sign_bit as i32)) as f64 * scale
+        let get_signed = |val: u32, bits: u32, scale: f64| -> f64 {
+            if bits == 0 || bits > 32 {
+                return 0.0;
+            }
+            
+            if bits == 32 {
+                // 特殊处理32位的情况
+                (val as i32) as f64 * scale
             } else {
-                val as f64 * scale
+                let sign_bit = 1u32 << (bits - 1);
+                if val & sign_bit != 0 {
+                    // 负数：扩展符号位
+                    let mask = (1u32 << bits) - 1;
+                    let extended = val | (!mask);
+                    (extended as i32) as f64 * scale
+                } else {
+                    // 正数
+                    val as f64 * scale
+                }
             }
         };
         
@@ -698,67 +711,67 @@ impl Rtcm3Parser {
         let code_l2 = bit_reader.read_bits(2)? as u8;
         // IDOT (14位，有符号，单位：semi-circles/s)
         let idot_raw = bit_reader.read_bits(14)?;
-        let idot = get_signed(idot_raw, 2.0f64.powf(-43.0) * std::f64::consts::PI);
+        let idot = get_signed(idot_raw, 14, 2.0f64.powf(-43.0) * std::f64::consts::PI);
         // IODE (8位)
         let iode = bit_reader.read_bits(8)? as u8;
         // Toc (16位，单位：seconds)
         let toc = bit_reader.read_bits(16)? as f64 * 16.0;
         // af2 (8位，有符号，单位：seconds/seconds^2)
         let af2_raw = bit_reader.read_bits(8)?;
-        let af2 = get_signed(af2_raw, 2.0f64.powf(-55.0));
+        let af2 = get_signed(af2_raw, 8, 2.0f64.powf(-55.0));
         // af1 (16位，有符号，单位：seconds/seconds)
         let af1_raw = bit_reader.read_bits(16)?;
-        let af1 = get_signed(af1_raw, 2.0f64.powf(-43.0));
+        let af1 = get_signed(af1_raw, 16, 2.0f64.powf(-43.0));
         // af0 (22位，有符号，单位：seconds)
         let af0_raw = bit_reader.read_bits(22)?;
-        let af0 = get_signed(af0_raw, 2.0f64.powf(-31.0));
+        let af0 = get_signed(af0_raw, 22, 2.0f64.powf(-31.0));
         // IODC (10位)
         let iodc = bit_reader.read_bits(10)? as u16;
         // Crs (16位，有符号，单位：meters)
         let crs_raw = bit_reader.read_bits(16)?;
-        let crs = get_signed(crs_raw, 2.0f64.powf(-5.0));
+        let crs = get_signed(crs_raw, 16, 2.0f64.powf(-5.0));
         // Deln (16位，有符号，单位：semi-circles/s)
         let deln_raw = bit_reader.read_bits(16)?;
-        let deln = get_signed(deln_raw, 2.0f64.powf(-43.0) * std::f64::consts::PI);
+        let deln = get_signed(deln_raw, 16, 2.0f64.powf(-43.0) * std::f64::consts::PI);
         // M0 (32位，有符号，单位：semi-circles)
         let m0_raw = bit_reader.read_bits(32)?;
-        let m0 = get_signed(m0_raw, 2.0f64.powf(-31.0) * std::f64::consts::PI);
+        let m0 = get_signed(m0_raw, 32, 2.0f64.powf(-31.0) * std::f64::consts::PI);
         // Cuc (16位，有符号，单位：radians)
         let cuc_raw = bit_reader.read_bits(16)?;
-        let cuc = get_signed(cuc_raw, 2.0f64.powf(-29.0));
+        let cuc = get_signed(cuc_raw, 16, 2.0f64.powf(-29.0));
         // e (32位，无符号，单位：dimensionless)
         let e = bit_reader.read_bits(32)? as f64 * 2.0f64.powf(-33.0);
         // Cus (16位，有符号，单位：radians)
         let cus_raw = bit_reader.read_bits(16)?;
-        let cus = get_signed(cus_raw, 2.0f64.powf(-29.0));
+        let cus = get_signed(cus_raw, 16, 2.0f64.powf(-29.0));
         // sqrtA (32位，无符号，单位：sqrt(meters))
         let sqrt_a = bit_reader.read_bits(32)? as f64 * 2.0f64.powf(-19.0);
         // Toe (16位，无符号，单位：seconds)
         let toe = bit_reader.read_bits(16)? as f64 * 16.0;
         // Cic (16位，有符号，单位：radians)
         let cic_raw = bit_reader.read_bits(16)?;
-        let cic = get_signed(cic_raw, 2.0f64.powf(-29.0));
+        let cic = get_signed(cic_raw, 16, 2.0f64.powf(-29.0));
         // Omega0 (32位，有符号，单位：semi-circles)
         let omega0_raw = bit_reader.read_bits(32)?;
-        let omega0 = get_signed(omega0_raw, 2.0f64.powf(-31.0) * std::f64::consts::PI);
+        let omega0 = get_signed(omega0_raw, 32, 2.0f64.powf(-31.0) * std::f64::consts::PI);
         // Cis (16位，有符号，单位：radians)
         let cis_raw = bit_reader.read_bits(16)?;
-        let cis = get_signed(cis_raw, 2.0f64.powf(-29.0));
+        let cis = get_signed(cis_raw, 16, 2.0f64.powf(-29.0));
         // i0 (32位，有符号，单位：semi-circles)
         let i0_raw = bit_reader.read_bits(32)?;
-        let i0 = get_signed(i0_raw, 2.0f64.powf(-31.0) * std::f64::consts::PI);
+        let i0 = get_signed(i0_raw, 32, 2.0f64.powf(-31.0) * std::f64::consts::PI);
         // Crc (16位，有符号，单位：meters)
         let crc_raw = bit_reader.read_bits(16)?;
-        let crc = get_signed(crc_raw, 2.0f64.powf(-5.0));
+        let crc = get_signed(crc_raw, 16, 2.0f64.powf(-5.0));
         // omega (32位，有符号，单位：semi-circles)
         let omega_raw = bit_reader.read_bits(32)?;
-        let omega = get_signed(omega_raw, 2.0f64.powf(-31.0) * std::f64::consts::PI);
+        let omega = get_signed(omega_raw, 32, 2.0f64.powf(-31.0) * std::f64::consts::PI);
         // Omegad (24位，有符号，单位：semi-circles/s)
         let omegad_raw = bit_reader.read_bits(24)?;
-        let omegad = get_signed(omegad_raw, 2.0f64.powf(-43.0) * std::f64::consts::PI);
+        let omegad = get_signed(omegad_raw, 24, 2.0f64.powf(-43.0) * std::f64::consts::PI);
         // Tgd (8位，有符号，单位：seconds)
         let tgd_raw = bit_reader.read_bits(8)?;
-        let tgd = get_signed(tgd_raw, 2.0f64.powf(-31.0));
+        let tgd = get_signed(tgd_raw, 8, 2.0f64.powf(-31.0));
         // 卫星健康 (6位)
         let svh = bit_reader.read_bits(6)? as u8;
         // 抗干扰标志 (1位)
