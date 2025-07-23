@@ -251,7 +251,7 @@ pub fn iono_error(el: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64::consts::PI;
+    
 
     #[test]
     fn test_klobuchar_ionodelay() {

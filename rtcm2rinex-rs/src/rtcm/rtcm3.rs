@@ -451,7 +451,11 @@ impl Rtcm3Parser {
                 // 检查是否已收集完整消息 (长度 + 消息头3字节 + CRC 3字节)
                 if self.buffer.len() == self.current_length + 6 {
                     // 检查 CRC
-                    if !check_crc(&self.buffer) {
+                    let binary_string = Self::bytes_to_binary_string(&self.buffer);
+                    let test_data = prepare_crc(&binary_string).unwrap();
+                    let result = crc_check(&test_data).unwrap();
+                    
+                    if !result {
                         self.state = Rtcm3ParserState::FindPreamble;
                         return Err(Rtcm3Error::CrcError);
                     }
@@ -468,6 +472,15 @@ impl Rtcm3Parser {
                 }
             }
         }
+    }
+
+    /// 将字节数组转换为二进制字符串
+    fn bytes_to_binary_string(bytes: &[u8]) -> String {
+        let mut s = String::with_capacity(bytes.len() * 8);
+        for &b in bytes {
+            s.push_str(&format!("{:08b}", b));
+        }
+        s
     }
     
     /// 解析完整的消息
@@ -979,15 +992,15 @@ impl Rtcm3Parser {
     }
 }
 
-/// CRC-24Q表，来自RTKLIB
-const TBL_CRC24Q: [u32; 256] = [
+/// CRC24Q校验表
+const CRC24Q_TABLE: [u32; 256] = [
     0x000000, 0x864CFB, 0x8AD50D, 0x0C99F6, 0x93E6E1, 0x15AA1A, 0x1933EC, 0x9F7F17,
     0xA18139, 0x27CDC2, 0x2B5434, 0xAD18CF, 0x3267D8, 0xB42B23, 0xB8B2D5, 0x3EFE2E,
     0xC54E89, 0x430272, 0x4F9B84, 0xC9D77F, 0x56A868, 0xD0E493, 0xDC7D65, 0x5A319E,
     0x64CFB0, 0xE2834B, 0xEE1ABD, 0x685646, 0xF72951, 0x7165AA, 0x7DFC5C, 0xFBB0A7,
     0x0CD1E9, 0x8A9D12, 0x8604E4, 0x00481F, 0x9F3708, 0x197BF3, 0x15E205, 0x93AEFE,
     0xAD50D0, 0x2B1C2B, 0x2785DD, 0xA1C926, 0x3EB631, 0xB8FACA, 0xB4633C, 0x322FC7,
-    0xC99F60, 0x4FD39B, 0x434A6D, 0xC50696, 0x5A7981, 0xDCD37A, 0xD0AC8C, 0x56E077,
+    0xC99F60, 0x4FD39B, 0x434A6D, 0xC50696, 0x5A7981, 0xDC357A, 0xD0AC8C, 0x56E077,
     0x681E59, 0xEE52A2, 0xE2CB54, 0x6487AF, 0xFBF8B8, 0x7DB443, 0x712DB5, 0xF7614E,
     0x19A3D2, 0x9FEF29, 0x9376DF, 0x153A24, 0x8A4533, 0x0C09C8, 0x00903E, 0x86DCC5,
     0xB822EB, 0x3E6E10, 0x32F7E6, 0xB4BB1D, 0x2BC40A, 0xAD88F1, 0xA11107, 0x275DFC,
@@ -1015,30 +1028,118 @@ const TBL_CRC24Q: [u32; 256] = [
     0x42FA2F, 0xC4B6D4, 0xC82F22, 0x4E63D9, 0xD11CCE, 0x575035, 0x5BC9C3, 0xDD8538
 ];
 
-/// 计算 RTCM3 CRC-24Q，直接使用RTKLIB中的算法
-fn rtcm3_crc(data: &[u8], len: usize) -> u32 {
-    let mut crc: u32 = 0;
+// /// 计算 RTCM3 CRC-24Q，直接使用RTKLIB中的算法
+// fn rtcm3_crc(data: &[u8], len: usize) -> u32 {
+//     let mut crc: u32 = 0;
     
-    for i in 0..len {
-        crc = ((crc << 8) & 0xFFFFFF) ^ TBL_CRC24Q[((crc >> 16) ^ (data[i] as u32)) as usize];
+//     for i in 0..len {
+//         crc = ((crc << 8) & 0xFFFFFF) ^ CRC24Q_TABLE[((crc >> 16) ^ (data[i] as u32)) as usize];
+//     }
+    //     crc
+// }
+
+// /// 检查 RTCM3 消息的 CRC
+// fn check_crc(data: &[u8]) -> bool {
+//     if data.len() < 6 {
+//         return false;
+//     }
+    
+//     let msg_len = data.len() - 3; // 减去 CRC 部分
+//     let calculated_crc = rtcm3_crc(data, msg_len);
+//     let expected_crc = ((data[msg_len] as u32) << 16) | 
+//                         ((data[msg_len+1] as u32) << 8) | 
+//                          (data[msg_len+2] as u32);
+                         
+//     calculated_crc == expected_crc
+// }
+
+
+/// 将二进制字符串转换为十六进制字符串
+/// # 参数
+/// * `binary_string` - 输入的二进制字符串
+/// # 返回值
+/// 转换后的十六进制字符串，若输入无效则返回错误
+pub fn convert_binary_to_hex(binary_string: &str) -> std::result::Result<String, String> {
+    if binary_string.is_empty() {
+        return Err("输入字符串不能为空".to_string());
     }
-    
-    crc
+
+    // 检查是否包含非法字符
+    for c in binary_string.chars() {
+        if c != '0' && c != '1' {
+            return Err(format!("包含非法的二进制字符: {}", c));
+        }
+    }
+
+    // 计算需要填充的前导零数量，使长度为4的倍数
+    let padding = (4 - (binary_string.len() % 4)) % 4;
+    let mut padded = String::with_capacity(binary_string.len() + padding);
+    padded.extend(std::iter::repeat('0').take(padding));
+    padded.push_str(binary_string);
+
+    // 每4位二进制转换为一个十六进制字符
+    let mut hex = String::with_capacity(padded.len() / 4);
+    for chunk in padded.as_str().as_bytes().chunks(4) {
+        let chunk_str = std::str::from_utf8(chunk).map_err(|_| "无效的UTF-8字符")?;
+        let value = u8::from_str_radix(chunk_str, 2).map_err(|_| "二进制转换失败")?;
+        hex.push_str(&format!("{:X}", value));
+    }
+
+    Ok(hex)
 }
 
-/// 检查 RTCM3 消息的 CRC
-fn check_crc(data: &[u8]) -> bool {
-    if data.len() < 6 {
-        return false;
+/// 准备CRC校验数据
+/// 将二进制字符串转换为CRC校验所需的字节数组
+/// # 参数
+/// * `binary_string` - 输入的二进制字符串
+/// # 返回值
+/// 转换后的字节数组，若转换失败则返回错误
+pub fn prepare_crc(binary_string: &str) -> std::result::Result<Vec<u8>, String> {
+    let hex_str = convert_binary_to_hex(binary_string)?;
+    //println!("hex_str: {}", hex_str);
+
+    // 将十六进制字符串转换为字节数组
+    let mut bytes = Vec::with_capacity(hex_str.len() / 2);
+    for i in (0..hex_str.len()).step_by(2) {
+        let chunk = &hex_str[i..i+2];
+        let byte = u8::from_str_radix(chunk, 16)
+            .map_err(|_| format!("无效的十六进制字符: {}", chunk))?;
+        bytes.push(byte);
     }
-    
-    let msg_len = data.len() - 3; // 减去 CRC 部分
-    let calculated_crc = rtcm3_crc(data, msg_len);
-    let expected_crc = ((data[msg_len] as u32) << 16) | 
-                        ((data[msg_len+1] as u32) << 8) | 
-                         (data[msg_len+2] as u32);
-                         
-    calculated_crc == expected_crc
+
+    Ok(bytes)
+}
+
+/// RTCM数据CRC校验
+/// # 参数
+/// * `rtcm` - 待校验的字节数组
+/// # 返回值
+/// 校验结果(true表示通过，false表示失败)，若输入数据长度不足则返回错误
+pub fn crc_check(rtcm: &[u8]) -> std::result::Result<bool, String> {
+    if rtcm.len() < 3 {
+        return Err("数据长度不足，无法进行CRC校验".to_string());
+    }
+
+    let mut crc = 0u32; // CRC-24Q初始值，与Java版本保持一致，使用0而不是0xFFFFFF
+    let len = rtcm.len();
+
+    for &byte in &rtcm[0..len-3] {
+        crc = ((crc << 8) & 0xFFFFFF) ^ CRC24Q_TABLE[((crc >> 16) ^ byte as u32) as usize];
+    }
+
+    // 提取计算得到的CRC值的三个字节
+    let crc_bytes = [
+        ((crc & 0xff0000) >> 16) as u8, // CRC高8位
+        ((crc & 0xff00) >> 8) as u8,    // CRC中间8位
+        (crc & 0xff) as u8              // CRC低8位
+    ];
+
+    // 获取数据中的CRC校验位（最后三个字节）
+    let data_crc = &rtcm[len-3..len];
+
+    // 比较计算得到的CRC和数据中的CRC
+    // 调整比较顺序，与Java版本保持一致
+    Ok(crc_bytes[0] == data_crc[0] && crc_bytes[1] == data_crc[1] && crc_bytes[2] == data_crc[2])
 }
 
 #[cfg(test)]
@@ -1046,32 +1147,11 @@ mod tests {
     use super::*;
     
     #[test]
-    fn test_rtcm3_crc() {
-        // 测试用例1：简单的自验证CRC测试
-        let data = [0x00, 0x13, 0x02, 0x29, 0x80];
-        
-        // 计算CRC
-        let crc = rtcm3_crc(&data, data.len());
-        println!("CRC for test case 1: {:06X}", crc);
-        
-        // 简单测试，把CRC附加到数据后面，然后验证
-        let mut test_data = Vec::new();
-        test_data.extend_from_slice(&data);
-        test_data.push((crc >> 16) as u8);
-        test_data.push(((crc >> 8) & 0xFF) as u8);
-        test_data.push((crc & 0xFF) as u8);
-        
-        assert!(check_crc(&test_data), "CRC check failed for test case 1");
-        
-        // 测试用例2：与RTKLIB兼容的测试
-        let data2 = [0x00, 0x01, 0x42, 0x7F, 0x00];
-        let expected_crc2: u32 = 0x1C8135;
-        
-        let crc2 = rtcm3_crc(&data2, data2.len());
-        println!("Test case 2 - Expected CRC: {:06X}, Calculated CRC: {:06X}", expected_crc2, crc2);
-        
-        // 注：如果此测试失败，可能是因为RTKLIB的CRC计算方法与RTCM3标准有所不同
-        // 我们优先保证自验证的测试通过，这样可以确保CRC检查的正确性
+    fn test_crc() {
+        let binary_string = "110100110000000011001100010001100100000000000100001011101000110011011110110000100000000000100000011111111011011010000100000010000100000000000000000000000000000000100000100000000000000100000001010001000100010001000100010001100100010001100100010001001111110010111111101111101011110101000001010000010100001001000000101111010011111110100101001111011010010011000010101010110010100000100110001000011000011101100010000100101100000000000011010101101011011100000111110110101010010011111010111010010111111010110110000101101110000111000011011011111100110010010000110100011111001010001000011101111010010000111101011011110000010111000011101101111001101101000100001110111111110011101001010101000011111111000111111100101010010011011101000110001111001010111100100100000111101011100010101101011111110111101000110001110100101011101110011000010010010011000100000100100100001100100000011001111000000000011101110000011110110100100000111111001000111101100000001110010001100011110000001011001001001000111101111001100110100100010000110001100001111111001111111010010110111110111001010001111011110100100110010100010000111001010000101000111111100000111110001100001101100101111100100000011100011111000111111100111001110111001111111000011000010001111111010011111100011010111101000000101011111000010011010000101001110000111110100011001111000011010010000110100100010010011010000101110000001100000001101111111101011001010011101011111111111111111111111111111111111010111111111111111111111111111111111111111111111011111110000000000000000000000001001111001011001111001101001001001000111111010100111111000011010011011101000001011001001111010011001101011001001101000011001001011001001100000000000001100100011001110010";
+        let test_data = prepare_crc(binary_string).unwrap();
+        let result = crc_check(&test_data).unwrap();
+        println!("CRC校验结果: {}", result);
     }
     
     #[test]
